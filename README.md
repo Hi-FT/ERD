@@ -1,8 +1,8 @@
 # ERD
 
-## Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation
+### Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation
 <p align='left'>
-  <img src='figs/framework.png' width='721'/>
+  <img src='figs/framework.jpg' width='721'/>
 </p>
 
 The code is coming soon！

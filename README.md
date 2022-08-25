@@ -7,23 +7,31 @@
 
 The code is coming soon！
 
-## Get Started
+### Requirements
+- Python 3.5+
+- PyTorch 1.6
+- CUDA 10.2
+- [mmcv](https://github.com/open-mmlab/mmcv)
 
-Please see [GETTING_STARTED.md](https://github.com/open-mmlab/mmdetection/blob/v2.6.0/docs/get_started.md) for the basic usage of MMDetection.
+### Get Started
 
-## Train
+Please refer to [GETTING_STARTED.md](https://github.com/open-mmlab/mmdetection/blob/v2.6.0/docs/get_started.md) for the basic usage of MMDetection.
+
+### Train
 ```python
 # assume that you are under the root directory of this project,
 # and you have activated your virtual environment if needed.
 # and with COCO dataset in 'data/coco/'
 
-tools/train.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py --work-dir=/model_zoo/mmdet/gfl_incre/first_40_incre_last_40/
+python tools/train.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py --work-dir=/model_zoo/mmdet/gfl_incre/first_40_incre_last_40/
 ```
 
-## Test
-tools/test.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py /model_zoo/mmdet/gfl_incre/first_40_incre_last_40/latest.pth 8 --eval bbox --options classwise=True
+### Test
+```python
+python tools/test.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py /model_zoo/mmdet/gfl_incre/first_40_incre_last_40/latest.pth 8 --eval bbox --options classwise=True
+```
 
-## Citation
+### Citation
 Please cite the following paper if this repo helps your research:
 ```bibtex
 @InProceedings{ERD,

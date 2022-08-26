@@ -23,7 +23,7 @@ Please refer to [GETTING_STARTED.md](https://github.com/open-mmlab/mmdetection/b
 ```python
 # assume that you are under the root directory of this project,
 # and you have activated your virtual environment if needed.
-# and with COCO dataset in 'data/coco/'
+# and with COCO dataset in '/dataset/coco/'
 
 python tools/train.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py --work-dir=/model_zoo/mmdet/gfl_incre/first_40_incre_last_40/
 ```

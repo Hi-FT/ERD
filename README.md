@@ -1,6 +1,4 @@
-## ERD
-
-### Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation
+## Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation
 
 Official Pytorch implementation for "[Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation](https://arxiv.org/abs/2204.02136)", CVPR 2022.
 

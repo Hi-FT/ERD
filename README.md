@@ -1,6 +1,9 @@
 ## ERD
 
-#### Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation
+### Overcoming Catastrophic Forgetting in Incremental Object Detection via Elastic Response Distillation
+
+Traditional object detectors are ill-equipped for incre- mental learning. However, fine-tuning directly on a well- trained detection model with only new data will lead to catastrophic forgetting. Knowledge distillation is a flexi- ble way to mitigate catastrophic forgetting. In Incremen- tal Object Detection (IOD), previous work mainly focuses on distilling for the combination of features and responses. However, they under-explore the information that contains in responses. In this paper, we propose a response-based incremental distillation method, dubbed Elastic Response Distillation (ERD), which focuses on elastically learning responses from the classification head and the regression head. Firstly, our method transfers category knowledge while equipping student detector with the ability to retain localization information during incremental learning. In addition, we further evaluate the quality of all locations and provide valuable responses by the Elastic Response Selec- tion (ERS) strategy. Finally, we elucidate that the knowl- edge from different responses should be assigned with dif- ferent importance during incremental distillation. Exten- sive experiments conducted on MS COCO demonstrate our method achieves state-of-the-art result, which substantially narrows the performance gap towards full training. 
+
 <p align='left'>
   <img src='figs/framework.jpg' width='721'/>
 </p>

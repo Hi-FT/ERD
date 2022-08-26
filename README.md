@@ -13,7 +13,7 @@ Traditional object detectors are ill-equipped for incre- mental learning. Howeve
 - Python 3.5+
 - PyTorch 1.6
 - CUDA 10.2
-- [mmcv](https://github.com/open-mmlab/mmcv)
+- [mmcv](https://github.com/open-mmlab/mmcv) 1.2.7
 
 ### Get Started
 

@@ -1,2 +1,0 @@
-find: paths must precede expression: null
-Usage: find [-H] [-L] [-P] [-Olevel] [-D help|tree|search|stat|rates|opt|exec] [path...] [expression]

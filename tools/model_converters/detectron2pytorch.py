@@ -1,8 +1,9 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import argparse
 from collections import OrderedDict
 
-import mmcv
 import torch
+from mmengine.fileio import load
 
 arch_settings = {50: (3, 4, 6, 3), 101: (3, 4, 23, 3)}
 
@@ -38,7 +39,7 @@ def convert(src, dst, depth):
         raise ValueError('Only support ResNet-50 and ResNet-101 currently')
     block_nums = arch_settings[depth]
     # load caffe model
-    caffe_model = mmcv.load(src, encoding='latin1')
+    caffe_model = load(src, encoding='latin1')
     blobs = caffe_model['blobs'] if 'blobs' in caffe_model else caffe_model
     # convert to pytorch style
     state_dict = OrderedDict()

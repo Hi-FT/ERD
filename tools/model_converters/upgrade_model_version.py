@@ -1,10 +1,11 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import argparse
 import re
 import tempfile
 from collections import OrderedDict
 
 import torch
-from mmcv import Config
+from mmengine import Config
 
 
 def is_head(key):

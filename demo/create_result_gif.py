@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import argparse
 import os
 import os.path as osp
@@ -6,6 +7,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import mmcv
 import numpy as np
+from mmengine.utils import scandir
 
 try:
     import imageio
@@ -13,6 +15,7 @@ except ImportError:
     imageio = None
 
 
+# TODO verify after refactoring analyze_results.py
 def parse_args():
     parser = argparse.ArgumentParser(description='Create GIF for demo')
     parser.add_argument(
@@ -78,7 +81,7 @@ def create_frame_by_matplotlib(image_dir,
 
     images_list = []
     for dir_names in result_dir_names:
-        images_list.append(mmcv.scandir(osp.join(image_dir, dir_names)))
+        images_list.append(scandir(osp.join(image_dir, dir_names)))
 
     frames = []
     for paths in _generate_batch_data(zip(*images_list), nrows):

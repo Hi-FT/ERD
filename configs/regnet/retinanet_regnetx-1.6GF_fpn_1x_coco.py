@@ -1,5 +1,6 @@
 _base_ = './retinanet_regnetx-3.2GF_fpn_1x_coco.py'
 model = dict(
+    pretrained='open-mmlab://regnetx_1.6gf',
     backbone=dict(
         type='RegNet',
         arch='regnetx_1.6gf',
@@ -7,9 +8,7 @@ model = dict(
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
-        style='pytorch',
-        init_cfg=dict(
-            type='Pretrained', checkpoint='open-mmlab://regnetx_1.6gf')),
+        style='pytorch'),
     neck=dict(
         type='FPN',
         in_channels=[72, 168, 408, 912],

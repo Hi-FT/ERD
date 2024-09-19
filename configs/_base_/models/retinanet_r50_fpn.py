@@ -1,12 +1,7 @@
 # model settings
 model = dict(
     type='RetinaNet',
-    data_preprocessor=dict(
-        type='DetDataPreprocessor',
-        mean=[123.675, 116.28, 103.53],
-        std=[58.395, 57.12, 57.375],
-        bgr_to_rgb=True,
-        pad_size_divisor=32),
+    pretrained='torchvision://resnet50',
     backbone=dict(
         type='ResNet',
         depth=50,
@@ -15,8 +10,7 @@ model = dict(
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
-        style='pytorch',
-        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
+        style='pytorch'),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
@@ -47,7 +41,7 @@ model = dict(
             alpha=0.25,
             loss_weight=1.0),
         loss_bbox=dict(type='L1Loss', loss_weight=1.0)),
-    # model training and testing settings
+    # training and testing settings
     train_cfg=dict(
         assigner=dict(
             type='MaxIoUAssigner',
@@ -55,8 +49,6 @@ model = dict(
             neg_iou_thr=0.4,
             min_pos_iou=0,
             ignore_iof_thr=-1),
-        sampler=dict(
-            type='PseudoSampler'),  # Focal loss should use PseudoSampler
         allowed_border=-1,
         pos_weight=-1,
         debug=False),

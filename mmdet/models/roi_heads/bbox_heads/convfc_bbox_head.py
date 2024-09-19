@@ -1,16 +1,11 @@
-# Copyright (c) OpenMMLab. All rights reserved.
-from typing import Optional, Tuple, Union
-
 import torch.nn as nn
 from mmcv.cnn import ConvModule
-from mmengine.config import ConfigDict
-from torch import Tensor
 
-from mmdet.registry import MODELS
+from mmdet.models.builder import HEADS
 from .bbox_head import BBoxHead
 
 
-@MODELS.register_module()
+@HEADS.register_module()
 class ConvFCBBoxHead(BBoxHead):
     r"""More general bbox head, with shared conv and fc layers and two optional
     separated branches.
@@ -23,20 +18,19 @@ class ConvFCBBoxHead(BBoxHead):
     """  # noqa: W605
 
     def __init__(self,
-                 num_shared_convs: int = 0,
-                 num_shared_fcs: int = 0,
-                 num_cls_convs: int = 0,
-                 num_cls_fcs: int = 0,
-                 num_reg_convs: int = 0,
-                 num_reg_fcs: int = 0,
-                 conv_out_channels: int = 256,
-                 fc_out_channels: int = 1024,
-                 conv_cfg: Optional[Union[dict, ConfigDict]] = None,
-                 norm_cfg: Optional[Union[dict, ConfigDict]] = None,
-                 init_cfg: Optional[Union[dict, ConfigDict]] = None,
+                 num_shared_convs=0,
+                 num_shared_fcs=0,
+                 num_cls_convs=0,
+                 num_cls_fcs=0,
+                 num_reg_convs=0,
+                 num_reg_fcs=0,
+                 conv_out_channels=256,
+                 fc_out_channels=1024,
+                 conv_cfg=None,
+                 norm_cfg=None,
                  *args,
-                 **kwargs) -> None:
-        super().__init__(*args, init_cfg=init_cfg, **kwargs)
+                 **kwargs):
+        super(ConvFCBBoxHead, self).__init__(*args, **kwargs)
         assert (num_shared_convs + num_shared_fcs + num_cls_convs +
                 num_cls_fcs + num_reg_convs + num_reg_fcs > 0)
         if num_cls_convs > 0 or num_reg_convs > 0:
@@ -82,48 +76,17 @@ class ConvFCBBoxHead(BBoxHead):
         self.relu = nn.ReLU(inplace=True)
         # reconstruct fc_cls and fc_reg since input channels are changed
         if self.with_cls:
-            if self.custom_cls_channels:
-                cls_channels = self.loss_cls.get_cls_channels(self.num_classes)
-            else:
-                cls_channels = self.num_classes + 1
-            cls_predictor_cfg_ = self.cls_predictor_cfg.copy()
-            cls_predictor_cfg_.update(
-                in_features=self.cls_last_dim, out_features=cls_channels)
-            self.fc_cls = MODELS.build(cls_predictor_cfg_)
+            self.fc_cls = nn.Linear(self.cls_last_dim, self.num_classes + 1)
         if self.with_reg:
-            box_dim = self.bbox_coder.encode_size
-            out_dim_reg = box_dim if self.reg_class_agnostic else \
-                box_dim * self.num_classes
-            reg_predictor_cfg_ = self.reg_predictor_cfg.copy()
-            if isinstance(reg_predictor_cfg_, (dict, ConfigDict)):
-                reg_predictor_cfg_.update(
-                    in_features=self.reg_last_dim, out_features=out_dim_reg)
-            self.fc_reg = MODELS.build(reg_predictor_cfg_)
-
-        if init_cfg is None:
-            # when init_cfg is None,
-            # It has been set to
-            # [[dict(type='Normal', std=0.01, override=dict(name='fc_cls'))],
-            #  [dict(type='Normal', std=0.001, override=dict(name='fc_reg'))]
-            # after `super(ConvFCBBoxHead, self).__init__()`
-            # we only need to append additional configuration
-            # for `shared_fcs`, `cls_fcs` and `reg_fcs`
-            self.init_cfg += [
-                dict(
-                    type='Xavier',
-                    distribution='uniform',
-                    override=[
-                        dict(name='shared_fcs'),
-                        dict(name='cls_fcs'),
-                        dict(name='reg_fcs')
-                    ])
-            ]
+            out_dim_reg = (4 if self.reg_class_agnostic else 4 *
+                           self.num_classes)
+            self.fc_reg = nn.Linear(self.reg_last_dim, out_dim_reg)
 
     def _add_conv_fc_branch(self,
-                            num_branch_convs: int,
-                            num_branch_fcs: int,
-                            in_channels: int,
-                            is_shared: bool = False) -> tuple:
+                            num_branch_convs,
+                            num_branch_fcs,
+                            in_channels,
+                            is_shared=False):
         """Add shared or separable branch.
 
         convs -> avg pool (optional) -> fcs
@@ -160,23 +123,16 @@ class ConvFCBBoxHead(BBoxHead):
             last_layer_dim = self.fc_out_channels
         return branch_convs, branch_fcs, last_layer_dim
 
-    def forward(self, x: Tuple[Tensor]) -> tuple:
-        """Forward features from the upstream network.
+    def init_weights(self):
+        super(ConvFCBBoxHead, self).init_weights()
+        # conv layers are already initialized by ConvModule
+        for module_list in [self.shared_fcs, self.cls_fcs, self.reg_fcs]:
+            for m in module_list.modules():
+                if isinstance(m, nn.Linear):
+                    nn.init.xavier_uniform_(m.weight)
+                    nn.init.constant_(m.bias, 0)
 
-        Args:
-            x (tuple[Tensor]): Features from the upstream network, each is
-                a 4D-tensor.
-
-        Returns:
-            tuple: A tuple of classification scores and bbox prediction.
-
-                - cls_score (Tensor): Classification scores for all \
-                    scale levels, each is a 4D-tensor, the channels number \
-                    is num_base_priors * num_classes.
-                - bbox_pred (Tensor): Box energies / deltas for all \
-                    scale levels, each is a 4D-tensor, the channels number \
-                    is num_base_priors * 4.
-        """
+    def forward(self, x):
         # shared part
         if self.num_shared_convs > 0:
             for conv in self.shared_convs:
@@ -217,11 +173,11 @@ class ConvFCBBoxHead(BBoxHead):
         return cls_score, bbox_pred
 
 
-@MODELS.register_module()
+@HEADS.register_module()
 class Shared2FCBBoxHead(ConvFCBBoxHead):
 
-    def __init__(self, fc_out_channels: int = 1024, *args, **kwargs) -> None:
-        super().__init__(
+    def __init__(self, fc_out_channels=1024, *args, **kwargs):
+        super(Shared2FCBBoxHead, self).__init__(
             num_shared_convs=0,
             num_shared_fcs=2,
             num_cls_convs=0,
@@ -233,11 +189,11 @@ class Shared2FCBBoxHead(ConvFCBBoxHead):
             **kwargs)
 
 
-@MODELS.register_module()
+@HEADS.register_module()
 class Shared4Conv1FCBBoxHead(ConvFCBBoxHead):
 
-    def __init__(self, fc_out_channels: int = 1024, *args, **kwargs) -> None:
-        super().__init__(
+    def __init__(self, fc_out_channels=1024, *args, **kwargs):
+        super(Shared4Conv1FCBBoxHead, self).__init__(
             num_shared_convs=4,
             num_shared_fcs=1,
             num_cls_convs=0,

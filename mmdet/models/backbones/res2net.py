@@ -1,13 +1,15 @@
-# Copyright (c) OpenMMLab. All rights reserved.
 import math
 
 import torch
 import torch.nn as nn
 import torch.utils.checkpoint as cp
-from mmcv.cnn import build_conv_layer, build_norm_layer
-from mmengine.model import Sequential
+from mmcv.cnn import (build_conv_layer, build_norm_layer, constant_init,
+                      kaiming_init)
+from mmcv.runner import load_checkpoint
+from torch.nn.modules.batchnorm import _BatchNorm
 
-from mmdet.registry import MODELS
+from mmdet.utils import get_root_logger
+from ..builder import BACKBONES
 from .resnet import Bottleneck as _Bottleneck
 from .resnet import ResNet
 
@@ -110,7 +112,7 @@ class Bottle2neck(_Bottleneck):
             identity = x
 
             out = self.conv1(x)
-            out = self.norm1(out)
+            out = self.bn1(out)
             out = self.relu(out)
 
             if self.with_plugins:
@@ -138,7 +140,7 @@ class Bottle2neck(_Bottleneck):
                 out = self.forward_plugin(out, self.after_conv2_plugin_names)
 
             out = self.conv3(out)
-            out = self.norm3(out)
+            out = self.bn3(out)
 
             if self.with_plugins:
                 out = self.forward_plugin(out, self.after_conv3_plugin_names)
@@ -160,7 +162,7 @@ class Bottle2neck(_Bottleneck):
         return out
 
 
-class Res2Layer(Sequential):
+class Res2Layer(nn.Sequential):
     """Res2Layer to build Res2Net style backbone.
 
     Args:
@@ -239,7 +241,7 @@ class Res2Layer(Sequential):
         super(Res2Layer, self).__init__(*layers)
 
 
-@MODELS.register_module()
+@BACKBONES.register_module()
 class Res2Net(ResNet):
     """Res2Net backbone.
 
@@ -275,9 +277,6 @@ class Res2Net(ResNet):
             memory while slowing down the training speed.
         zero_init_residual (bool): Whether to use zero init for last norm layer
             in resblocks to let them behave as identity.
-        pretrained (str, optional): model pretrained path. Default: None
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-            Default: None
 
     Example:
         >>> from mmdet.models import Res2Net
@@ -306,18 +305,11 @@ class Res2Net(ResNet):
                  style='pytorch',
                  deep_stem=True,
                  avg_down=True,
-                 pretrained=None,
-                 init_cfg=None,
                  **kwargs):
         self.scales = scales
         self.base_width = base_width
         super(Res2Net, self).__init__(
-            style='pytorch',
-            deep_stem=True,
-            avg_down=True,
-            pretrained=pretrained,
-            init_cfg=init_cfg,
-            **kwargs)
+            style='pytorch', deep_stem=True, avg_down=True, **kwargs)
 
     def make_res_layer(self, **kwargs):
         return Res2Layer(
@@ -325,3 +317,35 @@ class Res2Net(ResNet):
             base_width=self.base_width,
             base_channels=self.base_channels,
             **kwargs)
+
+    def init_weights(self, pretrained=None):
+        """Initialize the weights in backbone.
+
+        Args:
+            pretrained (str, optional): Path to pre-trained weights.
+                Defaults to None.
+        """
+        if isinstance(pretrained, str):
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, strict=False, logger=logger)
+        elif pretrained is None:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    kaiming_init(m)
+                elif isinstance(m, (_BatchNorm, nn.GroupNorm)):
+                    constant_init(m, 1)
+
+            if self.dcn is not None:
+                for m in self.modules():
+                    if isinstance(m, Bottle2neck):
+                        # dcn in Res2Net bottle2neck is in ModuleList
+                        for n in m.convs:
+                            if hasattr(n, 'conv_offset'):
+                                constant_init(n.conv_offset, 0)
+
+            if self.zero_init_residual:
+                for m in self.modules():
+                    if isinstance(m, Bottle2neck):
+                        constant_init(m.bn3, 0)
+        else:
+            raise TypeError('pretrained must be a str or None')

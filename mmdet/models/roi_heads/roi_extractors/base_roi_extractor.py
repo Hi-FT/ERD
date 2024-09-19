@@ -1,59 +1,49 @@
-# Copyright (c) OpenMMLab. All rights reserved.
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 from mmcv import ops
-from mmengine.model import BaseModule
-from torch import Tensor
-
-from mmdet.utils import ConfigType, OptMultiConfig
 
 
-class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
+class BaseRoIExtractor(nn.Module, metaclass=ABCMeta):
     """Base class for RoI extractor.
 
     Args:
-        roi_layer (:obj:`ConfigDict` or dict): Specify RoI layer type and
-            arguments.
+        roi_layer (dict): Specify RoI layer type and arguments.
         out_channels (int): Output channels of RoI layers.
-        featmap_strides (list[int]): Strides of input feature maps.
-        init_cfg (:obj:`ConfigDict` or dict or list[:obj:`ConfigDict` or \
-            dict], optional): Initialization config dict. Defaults to None.
+        featmap_strides (int): Strides of input feature maps.
     """
 
-    def __init__(self,
-                 roi_layer: ConfigType,
-                 out_channels: int,
-                 featmap_strides: List[int],
-                 init_cfg: OptMultiConfig = None) -> None:
-        super().__init__(init_cfg=init_cfg)
+    def __init__(self, roi_layer, out_channels, featmap_strides):
+        super(BaseRoIExtractor, self).__init__()
         self.roi_layers = self.build_roi_layers(roi_layer, featmap_strides)
         self.out_channels = out_channels
         self.featmap_strides = featmap_strides
+        self.fp16_enabled = False
 
     @property
-    def num_inputs(self) -> int:
+    def num_inputs(self):
         """int: Number of input feature maps."""
         return len(self.featmap_strides)
 
-    def build_roi_layers(self, layer_cfg: ConfigType,
-                         featmap_strides: List[int]) -> nn.ModuleList:
+    def init_weights(self):
+        pass
+
+    def build_roi_layers(self, layer_cfg, featmap_strides):
         """Build RoI operator to extract feature from each level feature map.
 
         Args:
-            layer_cfg (:obj:`ConfigDict` or dict): Dictionary to construct and
-                config RoI layer operation. Options are modules under
-                ``mmcv/ops`` such as ``RoIAlign``.
-            featmap_strides (list[int]): The stride of input feature map w.r.t
-                to the original image size, which would be used to scale RoI
+            layer_cfg (dict): Dictionary to construct and config RoI layer
+                operation. Options are modules under ``mmcv/ops`` such as
+                ``RoIAlign``.
+            featmap_strides (int): The stride of input feature map w.r.t to the
+                original image size, which would be used to scale RoI
                 coordinate (original image coordinate system) to feature
                 coordinate system.
 
         Returns:
-            :obj:`nn.ModuleList`: The RoI extractor modules for each level
-                feature map.
+            nn.ModuleList: The RoI extractor modules for each level feature
+                map.
         """
 
         cfg = layer_cfg.copy()
@@ -64,15 +54,15 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
             [layer_cls(spatial_scale=1 / s, **cfg) for s in featmap_strides])
         return roi_layers
 
-    def roi_rescale(self, rois: Tensor, scale_factor: float) -> Tensor:
+    def roi_rescale(self, rois, scale_factor):
         """Scale RoI coordinates by scale factor.
 
         Args:
-            rois (Tensor): RoI (Region of Interest), shape (n, 5)
+            rois (torch.Tensor): RoI (Region of Interest), shape (n, 5)
             scale_factor (float): Scale factor that RoI will be multiplied by.
 
         Returns:
-            Tensor: Scaled RoI.
+            torch.Tensor: Scaled RoI.
         """
 
         cx = (rois[:, 1] + rois[:, 3]) * 0.5
@@ -89,20 +79,5 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         return new_rois
 
     @abstractmethod
-    def forward(self,
-                feats: Tuple[Tensor],
-                rois: Tensor,
-                roi_scale_factor: Optional[float] = None) -> Tensor:
-        """Extractor ROI feats.
-
-        Args:
-            feats (Tuple[Tensor]): Multi-scale features.
-            rois (Tensor): RoIs with the shape (n, 5) where the first
-                column indicates batch id of each RoI.
-            roi_scale_factor (Optional[float]): RoI scale factor.
-                Defaults to None.
-
-        Returns:
-            Tensor: RoI feature.
-        """
+    def forward(self, feats, rois, roi_scale_factor=None):
         pass

@@ -1,0 +1,15 @@
+
+# 全量
+CUDA_VISIBLE_DEVICES=0 ./tools/dist_train.sh configs/gfl_incre/gfl_r50_fpn_1x_coco.py 1
+# 前40 class
+CUDA_VISIBLE_DEVICES=0 ./tools/dist_train.sh configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats.py 1
+
+--------------------train-debug-----------------------
+configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats.py
+--work-dir=work_dirs_train_debug
+
+--------------------test-debug-----------------------
+configs/gfl_incre/gfl_r50_fpn_1x_coco.py
+work_dirs/gfl_r50_fpn_1x_coco/epoch_1.pth
+--out=results_debug/gfl_r50_fpn_1x_coco.pkl
+--eval=bbox

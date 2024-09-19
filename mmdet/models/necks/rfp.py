@@ -1,14 +1,13 @@
-# Copyright (c) OpenMMLab. All rights reserved.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mmengine.model import BaseModule, ModuleList, constant_init, xavier_init
+from mmcv.cnn import constant_init, kaiming_init, xavier_init
 
-from mmdet.registry import MODELS
+from ..builder import NECKS, build_backbone
 from .fpn import FPN
 
 
-class ASPP(BaseModule):
+class ASPP(nn.Module):
     """ASPP (Atrous Spatial Pyramid Pooling)
 
     This is an implementation of the ASPP module used in DetectoRS
@@ -19,15 +18,10 @@ class ASPP(BaseModule):
         out_channels (int): Number of channels produced by this module
         dilations (tuple[int]): Dilations of the four branches.
             Default: (1, 3, 6, 1)
-        init_cfg (dict or list[dict], optional): Initialization config dict.
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 dilations=(1, 3, 6, 1),
-                 init_cfg=dict(type='Kaiming', layer='Conv2d')):
-        super().__init__(init_cfg)
+    def __init__(self, in_channels, out_channels, dilations=(1, 3, 6, 1)):
+        super().__init__()
         assert dilations[-1] == 1
         self.aspp = nn.ModuleList()
         for dilation in dilations:
@@ -43,6 +37,12 @@ class ASPP(BaseModule):
                 bias=True)
             self.aspp.append(conv)
         self.gap = nn.AdaptiveAvgPool2d(1)
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                kaiming_init(m)
 
     def forward(self, x):
         avg_x = self.gap(x)
@@ -55,7 +55,7 @@ class ASPP(BaseModule):
         return out
 
 
-@MODELS.register_module()
+@NECKS.register_module()
 class RFP(FPN):
     """RFP (Recursive Feature Pyramid)
 
@@ -70,8 +70,6 @@ class RFP(FPN):
         aspp_out_channels (int): Number of output channels of ASPP module.
         aspp_dilations (tuple[int]): Dilation rates of four branches.
             Default: (1, 3, 6, 1)
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-            Default: None
     """
 
     def __init__(self,
@@ -79,17 +77,12 @@ class RFP(FPN):
                  rfp_backbone,
                  aspp_out_channels,
                  aspp_dilations=(1, 3, 6, 1),
-                 init_cfg=None,
                  **kwargs):
-        assert init_cfg is None, 'To prevent abnormal initialization ' \
-                                 'behavior, init_cfg is not allowed to be set'
-        super().__init__(init_cfg=init_cfg, **kwargs)
+        super().__init__(**kwargs)
         self.rfp_steps = rfp_steps
-        # Be careful! Pretrained weights cannot be loaded when use
-        # nn.ModuleList
-        self.rfp_modules = ModuleList()
+        self.rfp_modules = nn.ModuleList()
         for rfp_idx in range(1, rfp_steps):
-            rfp_module = MODELS.build(rfp_backbone)
+            rfp_module = build_backbone(rfp_backbone)
             self.rfp_modules.append(rfp_module)
         self.rfp_aspp = ASPP(self.out_channels, aspp_out_channels,
                              aspp_dilations)
@@ -110,7 +103,8 @@ class RFP(FPN):
                 if isinstance(m, nn.Conv2d):
                     xavier_init(m, distribution='uniform')
         for rfp_idx in range(self.rfp_steps - 1):
-            self.rfp_modules[rfp_idx].init_weights()
+            self.rfp_modules[rfp_idx].init_weights(
+                self.rfp_modules[rfp_idx].pretrained)
         constant_init(self.rfp_weight, 0)
 
     def forward(self, inputs):

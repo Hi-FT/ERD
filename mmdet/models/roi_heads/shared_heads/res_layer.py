@@ -1,16 +1,15 @@
-# Copyright (c) OpenMMLab. All rights reserved.
-import warnings
-
 import torch.nn as nn
-from mmengine.model import BaseModule
+from mmcv.cnn import constant_init, kaiming_init
+from mmcv.runner import auto_fp16, load_checkpoint
 
 from mmdet.models.backbones import ResNet
-from mmdet.models.layers import ResLayer as _ResLayer
-from mmdet.registry import MODELS
+from mmdet.models.builder import SHARED_HEADS
+from mmdet.models.utils import ResLayer as _ResLayer
+from mmdet.utils import get_root_logger
 
 
-@MODELS.register_module()
-class ResLayer(BaseModule):
+@SHARED_HEADS.register_module()
+class ResLayer(nn.Module):
 
     def __init__(self,
                  depth,
@@ -21,11 +20,8 @@ class ResLayer(BaseModule):
                  norm_cfg=dict(type='BN', requires_grad=True),
                  norm_eval=True,
                  with_cp=False,
-                 dcn=None,
-                 pretrained=None,
-                 init_cfg=None):
-        super(ResLayer, self).__init__(init_cfg)
-
+                 dcn=None):
+        super(ResLayer, self).__init__()
         self.norm_eval = norm_eval
         self.norm_cfg = norm_cfg
         self.stage = stage
@@ -48,24 +44,26 @@ class ResLayer(BaseModule):
             dcn=dcn)
         self.add_module(f'layer{stage + 1}', res_layer)
 
-        assert not (init_cfg and pretrained), \
-            'init_cfg and pretrained cannot be specified at the same time'
+    def init_weights(self, pretrained=None):
+        """Initialize the weights in the module.
+
+        Args:
+            pretrained (str, optional): Path to pre-trained weights.
+                Defaults to None.
+        """
         if isinstance(pretrained, str):
-            warnings.warn('DeprecationWarning: pretrained is a deprecated, '
-                          'please use "init_cfg" instead')
-            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, strict=False, logger=logger)
         elif pretrained is None:
-            if init_cfg is None:
-                self.init_cfg = [
-                    dict(type='Kaiming', layer='Conv2d'),
-                    dict(
-                        type='Constant',
-                        val=1,
-                        layer=['_BatchNorm', 'GroupNorm'])
-                ]
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    kaiming_init(m)
+                elif isinstance(m, nn.BatchNorm2d):
+                    constant_init(m, 1)
         else:
             raise TypeError('pretrained must be a str or None')
 
+    @auto_fp16()
     def forward(self, x):
         res_layer = getattr(self, f'layer{self.stage + 1}')
         out = res_layer(x)

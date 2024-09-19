@@ -1,4 +1,3 @@
-# Copyright (c) OpenMMLab. All rights reserved.
 import asyncio
 import contextlib
 import logging

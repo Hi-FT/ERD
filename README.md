@@ -44,6 +44,7 @@ pip install -v -e .
 You can run /script/select_categories.py to split the COCO dataset as you want,
 
 ```python
+# to generate instances_train2017_sel_last_40_cats.json
 python ./script/select_categories.py
 
 ```

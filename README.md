@@ -41,6 +41,12 @@ mim install mmcv==2.0.0
 pip install -v -e .
 ```
 
+You can run /script/select_categories.py to split the COCO dataset as you want,
+
+```python
+python ./script/select_categories.py
+
+```
 
 
 ### Train

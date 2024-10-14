@@ -9,15 +9,39 @@ Traditional object detectors are ill-equipped for incremental learning. However,
   <img src='figs/framework.jpg' width='721'/>
 </p>
 
-### Requirements
-- Python 3.5+
-- PyTorch 1.6
-- CUDA 10.2
-- [mmcv](https://github.com/open-mmlab/mmcv) 1.2.7
+### ====== 2023.07.04 Updated  ======
+### Migrate code to the following newer environment
+- Python 3.8
+- PyTorch 1.13.1
+- CUDA 11.6
+- [mmdetection](https://github.com/open-mmlab/mmdetection) 3.0.0
+- [mmcv](https://github.com/open-mmlab/mmcv) 2.0.0
 
 ### Get Started
 
-This repo is based on [MMDetection](https://github.com/open-mmlab/mmdetection). Please refer to [GETTING_STARTED.md](https://github.com/open-mmlab/mmdetection/blob/v2.6.0/docs/get_started.md) for the basic configuration and usage of MMDetection.
+This repo is based on [MMDetection 3.0](https://github.com/open-mmlab/mmdetection). Please refer to [GETTING_STARTED.md](https://mmdetection.readthedocs.io/en/v3.0.0/get_started.html) for the basic configuration and usage of MMDetection.
+Or follow the steps below to install
+
+```python
+conda create -n ERD python=3.8 -y
+
+source activate ERD
+
+conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.6 -c pytorch -c nvidia
+
+pip install tqdm
+
+pip install -U openmim
+
+mim install mmengine==0.7.3
+
+mim install mmcv==2.0.0
+
+# cd erd 
+pip install -v -e .
+```
+
+
 
 ### Train
 ```python
@@ -25,12 +49,19 @@ This repo is based on [MMDetection](https://github.com/open-mmlab/mmdetection). 
 # and you have activated your virtual environment if needed.
 # and with COCO dataset in '/dataset/coco/'
 
-python tools/train.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py --work-dir=/model_zoo/mmdet/gfl_incre/first_40_incre_last_40/
+# train first 40 cats
+CUDA_VISIBLE_DEVICES=0,1 ./tools/dist_train.sh configs/gfl_increment/gfl_r50_fpn_1x_coco_first_40_cats.py 2 --work-dir=../ERD_results/gfl_increment/gfl_r50_fpn_1x_coco_first_40_cats
+#train last 40 cats incrementally
+CUDA_VISIBLE_DEVICES=0,1 ./tools/dist_train.sh configs/gfl_increment/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py 2 --work-dir=../ERD_results/gfl_increment/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats
 ```
 
 ### Test
 ```python
-python tools/test.py configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py /model_zoo/mmdet/gfl_incre/first_40_incre_last_40/latest.pth 8 --eval bbox --options classwise=True
+# test first 40 cats
+CUDA_VISIBLE_DEVICES=0,1 ./tools/dist_test.sh configs/gfl_increment/gfl_r50_fpn_1x_coco_first_40_cats.py ../ERD_results/gfl_increment/gfl_r50_fpn_1x_coco_first_40_cats/epoch_12.pth 2 --cfg-options test_evaluator.classwise=True
+#test all 80 cats on the incre model
+CUDA_VISIBLE_DEVICES=0,1 ./tools/dist_test.sh configs/gfl_increment/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats.py ../ERD_results/gfl_increment/gfl_r50_fpn_1x_coco_first_40_incre_last_40_cats/epoch_12.pth 2 --cfg-options test_evaluator.classwise=True
+
 ```
 
 ### Citation
